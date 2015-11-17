@@ -34,7 +34,12 @@ class SudokuTable:
 
     def remove_duplicates(self, group):
         """Remove duplicates between confirmed numbers in group and possible
-        numbers for that cell."""
+        numbers for that cell.
+        
+        Args:
+            group: A list containing integers for confirmed sudoku numbers,
+                and lists of possible numbers for unconfirmed cells.
+        """
 
         lst = []
         for cell in group:
@@ -59,13 +64,13 @@ class SudokuTable:
         return lst
 
 
-    def process_rows_cols(self, grid):
+    def process_rows_cols(self):
         """Iterate through Sudoku grid by rows and cols, confirming known 
         numbers.
         """
         new_grid = []
         # Go through grid row by row.
-        for row in grid:
+        for row in self.grid:
             new_grid.append(self.remove_duplicates(row))
        
         # Transpose grid so rows become columns and vice versa.
@@ -75,9 +80,10 @@ class SudokuTable:
         new_grid = []
         for col in trans_grid:
             new_grid.append(self.remove_duplicates(col))
-        #self.grid = new_grid
+        
+        self.grid = map(list, zip(*new_grid))
 
-    def process_segments(self, grid):
+    def process_segments(self):
         """Split 9x9 grid into 3x3 segments, then check for confirmed numbers
         in each.
         
@@ -88,7 +94,7 @@ class SudokuTable:
         """
 
         # Divide grid into segments.
-        arr_grid = numpy.array(new_grid)
+        arr_grid = numpy.array(self.grid)
         a = arr_grid[0:3, 0:3]
         b = arr_grid[3:6, 0:3]
         c = arr_grid[6:9, 0:3]
@@ -101,56 +107,44 @@ class SudokuTable:
 
         segments = [a, b, c, d, e, f, g, h, i]
 
+        processed_segs = []
+        for seg in segments:
         # Flatten each segment.
-        flat_seg = []
-        for seg in segments:
-            flat_seg.append(numpy.ravel(seg).tolist())
-
+            s = numpy.ravel(seg).tolist()
         # Confirm numbers and reduce possibilities.
-        segments = []
-        for seg in flat_seg:
-            segments.append(self.remove_duplicates(seg))
-
+            s = self.remove_duplicates(s)
         # Wrap up each segment and convert back to array.
-        segs = []
-        for seg in segments:
-            #segs.append(numpy.reshape(numpy.array(seg), (3,3)))
-            s = numpy.array(seg, dtype=object)
-            s_re = numpy.reshape(s, (3,3))
-            segs.append(s_re)
+            s = numpy.array(s, dtype=object)
+            s = numpy.reshape(s, (3,3))
+            processed_segs.append(s)
 
         # Join up segments back into 9x9 grid.
         new_arr_grid = arr_grid
-        new_arr_grid[0:3,0:3] = segs[0]
-        new_arr_grid[3:6,0:3] = segs[1]
-        new_arr_grid[6:9,0:3] = segs[2]
-        new_arr_grid[0:3,3:6] = segs[3]
-        new_arr_grid[3:6,3:6] = segs[4]
-        new_arr_grid[6:9,3:6] = segs[5]
-        new_arr_grid[0:3,6:9] = segs[6]
-        new_arr_grid[3:6,6:9] = segs[7]
-        new_arr_grid[6:9,6:9] = segs[8]
+        new_arr_grid[0:3,0:3] = processed_segs[0]
+        new_arr_grid[3:6,0:3] = processed_segs[1]
+        new_arr_grid[6:9,0:3] = processed_segs[2]
+        new_arr_grid[0:3,3:6] = processed_segs[3]
+        new_arr_grid[3:6,3:6] = processed_segs[4]
+        new_arr_grid[6:9,3:6] = processed_segs[5]
+        new_arr_grid[0:3,6:9] = processed_segs[6]
+        new_arr_grid[3:6,6:9] = processed_segs[7]
+        new_arr_grid[6:9,6:9] = processed_segs[8]
 
-        print new_arr_grid
+        self_grid = new_arr_grid
 
 
     def confirmed_nums(self):
         return [[0 if type(cell) is list else cell for cell in row]
                      for row in self.grid]
 
-        # TODO: add logic for 3x3 grid reduction.
 
 st = SudokuTable(EASY)
 
-#print st.grid
-st.process_rows_cols(st.grid)
-#print ""
-#print st.grid
-#st.process_rows_cols(st.grid)
-#print ""
-#print st.grid
-#st.process_rows_cols(st.grid)
-#print ""
-#print st.grid
-#print tabulate.tabulate(st.confirmed_nums())
-#print st.confirmed_nums()
+print st.grid
+for _i in range(5):
+    st.process_rows_cols()
+    st.process_segments()
+    print ""
+    print st.grid
+    print ""
+    print st.confirmed_nums()
