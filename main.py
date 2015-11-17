@@ -4,16 +4,33 @@
 import tabulate
 import numpy
 
-EASY = [[0, 2, 0, 1, 7, 8, 0, 3, 0],
-        [0, 4, 0, 3, 0, 2, 0, 9, 0],
-        [1, 0, 0, 0, 0, 0, 0, 0, 6],
-        [0, 0, 8, 6, 0, 3, 5, 0, 0],
-        [3, 0, 0, 0, 0, 0, 0, 0, 4],
-        [0, 0, 6, 7, 0, 9, 2, 0, 0],
-        [9, 0, 0, 0, 0, 0, 0, 0, 2],
-        [0, 8, 0, 9, 0, 1, 0, 6, 0],
-        [0, 1, 0, 4, 3, 6, 0, 5, 0]]
+MEDIUM = [
+    [0,2,0, 1,7,8, 0,3,0],
+    [0,4,0, 3,0,2, 0,9,0],
+    [1,0,0, 0,0,0, 0,0,6],
 
+    [0,0,8, 6,0,3, 5,0,0],
+    [3,0,0, 0,0,0, 0,0,4],
+    [0,0,6, 7,0,9, 2,0,0],
+
+    [9,0,0, 0,0,0, 0,0,2],
+    [0,8,0, 9,0,1, 0,6,0],
+    [0,1,0, 4,3,6, 0,5,0]]
+
+# This grid copied from Parth's code.
+EASY = [
+    [5,3,0, 0,7,0, 0,0,0],
+    [6,0,0, 1,9,5, 0,0,0],
+    [0,9,8, 0,0,0, 0,6,0],
+
+    [8,0,0, 0,6,0, 0,0,3],
+    [4,0,0, 8,0,3, 0,0,1],
+    [7,0,0, 0,2,0, 0,0,6],
+
+    [0,6,0, 0,0,0, 2,8,0],
+    [0,0,0, 4,1,9, 0,0,5],
+    [0,0,0, 0,8,0, 0,7,9]]
+       
 
 class SudokuTable:
     """A class for a 9x9 Sudoku grid, containing relevant data and methods.
@@ -94,7 +111,7 @@ class SudokuTable:
         """
 
         # Divide grid into segments.
-        arr_grid = numpy.array(self.grid)
+        arr_grid = numpy.array(self.grid, dtype=object)
         a = arr_grid[0:3, 0:3]
         b = arr_grid[3:6, 0:3]
         c = arr_grid[6:9, 0:3]
@@ -106,7 +123,6 @@ class SudokuTable:
         i = arr_grid[6:9, 6:9]
 
         segments = [a, b, c, d, e, f, g, h, i]
-
         processed_segs = []
         for seg in segments:
         # Flatten each segment.
@@ -117,7 +133,6 @@ class SudokuTable:
             s = numpy.array(s, dtype=object)
             s = numpy.reshape(s, (3,3))
             processed_segs.append(s)
-
         # Join up segments back into 9x9 grid.
         new_arr_grid = arr_grid
         new_arr_grid[0:3,0:3] = processed_segs[0]
@@ -129,22 +144,32 @@ class SudokuTable:
         new_arr_grid[0:3,6:9] = processed_segs[6]
         new_arr_grid[3:6,6:9] = processed_segs[7]
         new_arr_grid[6:9,6:9] = processed_segs[8]
+        gd = new_arr_grid.tolist()
+        self.grid = gd
 
-        self_grid = new_arr_grid
+    def print_grid(self):
+        """Print the grid of confirmed and possible numbers by row."""
 
+        print "----------------------------"
+        for row in self.grid:
+            print row
 
-    def confirmed_nums(self):
-        return [[0 if type(cell) is list else cell for cell in row]
+    def print_confirmed(self):
+        """Print the grid of confirmed numbers only, with zeros substituted
+        in for unconfirmed cells."""
+
+        grid = [[0 if type(cell) is list else cell for cell in row]
                      for row in self.grid]
-
+        print "----------------------------"
+        for row in grid:
+            print row
 
 st = SudokuTable(EASY)
 
 print st.grid
-for _i in range(5):
+for _i in range(20):
     st.process_rows_cols()
-    st.process_segments()
-    print ""
     print st.grid
-    print ""
-    print st.confirmed_nums()
+    st.process_segments()
+    print st.grid
+    st.print_confirmed()
