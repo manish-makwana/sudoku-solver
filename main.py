@@ -2,6 +2,7 @@
 """
 
 import tabulate
+import numpy
 
 EASY = [[0, 2, 0, 1, 7, 8, 0, 3, 0],
         [0, 4, 0, 3, 0, 2, 0, 9, 0],
@@ -74,7 +75,64 @@ class SudokuTable:
         new_grid = []
         for col in trans_grid:
             new_grid.append(self.remove_duplicates(col))
-        self.grid = new_grid
+        #self.grid = new_grid
+
+    def process_segments(self, grid):
+        """Split 9x9 grid into 3x3 segments, then check for confirmed numbers
+        in each.
+        
+        Segments are arranged accordingly:
+           a   b   c
+           d   e   f
+           g   h   i
+        """
+
+        # Divide grid into segments.
+        arr_grid = numpy.array(new_grid)
+        a = arr_grid[0:3, 0:3]
+        b = arr_grid[3:6, 0:3]
+        c = arr_grid[6:9, 0:3]
+        d = arr_grid[0:3, 3:6]
+        e = arr_grid[3:6, 3:6]
+        f = arr_grid[6:9, 3:6]
+        g = arr_grid[0:3, 6:9]
+        h = arr_grid[3:6, 6:9]
+        i = arr_grid[6:9, 6:9]
+
+        segments = [a, b, c, d, e, f, g, h, i]
+
+        # Flatten each segment.
+        flat_seg = []
+        for seg in segments:
+            flat_seg.append(numpy.ravel(seg).tolist())
+
+        # Confirm numbers and reduce possibilities.
+        segments = []
+        for seg in flat_seg:
+            segments.append(self.remove_duplicates(seg))
+
+        # Wrap up each segment and convert back to array.
+        segs = []
+        for seg in segments:
+            #segs.append(numpy.reshape(numpy.array(seg), (3,3)))
+            s = numpy.array(seg, dtype=object)
+            s_re = numpy.reshape(s, (3,3))
+            segs.append(s_re)
+
+        # Join up segments back into 9x9 grid.
+        new_arr_grid = arr_grid
+        new_arr_grid[0:3,0:3] = segs[0]
+        new_arr_grid[3:6,0:3] = segs[1]
+        new_arr_grid[6:9,0:3] = segs[2]
+        new_arr_grid[0:3,3:6] = segs[3]
+        new_arr_grid[3:6,3:6] = segs[4]
+        new_arr_grid[6:9,3:6] = segs[5]
+        new_arr_grid[0:3,6:9] = segs[6]
+        new_arr_grid[3:6,6:9] = segs[7]
+        new_arr_grid[6:9,6:9] = segs[8]
+
+        print new_arr_grid
+
 
     def confirmed_nums(self):
         return [[0 if type(cell) is list else cell for cell in row]
@@ -84,15 +142,15 @@ class SudokuTable:
 
 st = SudokuTable(EASY)
 
-print st.grid
+#print st.grid
 st.process_rows_cols(st.grid)
-print ""
-print st.grid
-st.process_rows_cols(st.grid)
-print ""
-print st.grid
-st.process_rows_cols(st.grid)
-print ""
-print st.grid
+#print ""
+#print st.grid
+#st.process_rows_cols(st.grid)
+#print ""
+#print st.grid
+#st.process_rows_cols(st.grid)
+#print ""
+#print st.grid
 #print tabulate.tabulate(st.confirmed_nums())
 #print st.confirmed_nums()
