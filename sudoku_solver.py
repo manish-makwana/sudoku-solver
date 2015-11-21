@@ -119,34 +119,32 @@ class SudokuTable(object):
                 lst.append(cell[0])
 
             else:
-                # Compare unconfirmed numbers against other unconfirmed 
-                # numbers. If it only appears once, it must be confirmed.
-                count = 0
-                lists = self.lists_in_group(group)
-                for cell2 in lists:
-                    for item in cell2:
-                        for cell3 in lists:
-                            if item in cell3:
-                                count += 1
-                        # Must be this number.
-                        if count == 1:
-                            lst.append(item)
-                            break
-                    if count == 1:
-                        break
+                # Compare current unconfirmed numbers for cell against
+                # confirmed numbers in the entire group.
+                nums = self.nums_in_group(group)
+                reduced_poss = [poss for poss in cell if not poss in nums]
+                if len(reduced_poss) == 1:
+                    lst.append(reduced_poss[0])
+                else:
+                    lst.append(reduced_poss)
 
-                if count != 1:
-                    # Compare current unconfirmed numbers for cell against
-                    # confirmed numbers in the entire group.
-                    nums = self.nums_in_group(group)
-                    reduced_poss = [poss for poss in cell if not poss in nums]
-                    if len(reduced_poss) == 1:
-                        lst.append(reduced_poss[0])
-                    else:
-                        lst.append(reduced_poss)
+        self.find_hidden_confirmed(lst)
 
         return lst
 
+    def find_hidden_confirmed(self, group):
+        # Compare unconfirmed numbers against other unconfirmed 
+        # numbers. If it only appears once, it must be confirmed.
+        num_count = [0] * 10
+        cell_pos = [0] * 10
+        for i, cell in enumerate(group):
+            if type(cell) is list:
+                for num in cell:
+                    num_count[num] += 1
+                    cell_pos[num] = i
+        if num_count.count(1) == 1:
+            confirmed_num = num_count.index(1)
+            group[cell_pos[confirmed_num]]= confirmed_num
 
     def process_rows_cols(self):
         """Iterate through Sudoku grid by rows and cols, confirming known
@@ -213,14 +211,6 @@ class SudokuTable(object):
         gd = new_arr_grid.tolist()
         self.grid = gd
 
-#     def process_3_groups(self, group_a, group_b, group_c):
-#         for cell_a in group_a:
-#             for cell_b in group_b:
-#                 for cell_c in group_c:
-#                     # Check the groups for a common number between two of them.
-#                     # Only applies when number is confirmed (is int, not list).
-#                     if cell_a == cell_b and type(cell_a) is int:
-
     def print_grid(self):
         """Print the grid of confirmed and possible numbers by row."""
 
@@ -267,9 +257,9 @@ class SudokuTable(object):
 def main():
     """Solve a test Sudoku puzzle using the SudokuTable class and methods."""
     # pylint: disable=invalid-name
-    st = SudokuTable(MEDIUM)
+    st = SudokuTable(EASY)
     print "Starting grid:"
-    for row in MEDIUM:
+    for row in EASY:
         print row
     it = st.solve()
     # The grid was solved.
