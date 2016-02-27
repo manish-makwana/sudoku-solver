@@ -6,6 +6,7 @@ Attributes:
     EASY: An easy sudoku puzzle.
     MEDIUM: A medium difficulty sudoku puzzle.
     MEDIUM2: Another medium difficulty sudoku puzzle.
+    HARD: Hard difficulty puzzle.
     SudokuTable(grid): A class for storing puzzle data, and methods for
         solving and displaying it.
     main(): Create a SudokuTable instance with one of the given puzzles
@@ -17,6 +18,7 @@ Attributes:
 
 
 import numpy
+import unittest
 
 
 # pylint: disable=bad-whitespace
@@ -157,27 +159,28 @@ class SudokuTable(object):
                     cell_pos[num] = i
         if num_count.count(1) == 1:
             confirmed_num = num_count.index(1)
-            group[cell_pos[confirmed_num]]= confirmed_num
+            group[cell_pos[confirmed_num]] = confirmed_num
+        return group
 
-    def process_rows_cols(self):
-        """Iterate through Sudoku grid by rows and cols, confirming known
-        numbers.
-        """
+    def process_rows(self):
+        """Iterate through Sudoku grid by rows, confirming known numbers."""
         new_grid = []
         # Go through grid row by row.
         for row in self.grid:
             new_grid.append(self.remove_duplicates(row))
+        self.grid = new_grid
 
+    def process_cols(self):
+        """Iterate through Sudoku grid by rows, confirming known numbers."""
         # Transpose grid so rows become columns and vice versa.
         # pylint: disable=bad-builtin
         # pylint: disable=star-args
-        trans_grid = map(list, zip(*new_grid))
+        trans_grid = map(list, zip(*self.grid))
 
         # Go through grid column by column.
         new_grid = []
         for col in trans_grid:
             new_grid.append(self.remove_duplicates(col))
-
         self.grid = map(list, zip(*new_grid))
 
     def process_segments(self):
@@ -188,6 +191,19 @@ class SudokuTable(object):
         # pylint: disable=too-many-locals
         # pylint: disable=invalid-name
         # pylint: disable=no-member
+        # -------------------
+        # |     |     |     |
+        # |  a  |  b  |  c  |
+        # |     |     |     |
+        # |------------------
+        # |     |     |     |
+        # |  d  |  e  |  f  |
+        # |     |     |     |
+        # |------------------
+        # |     |     |     |
+        # |  g  |  h  |  i  |
+        # |     |     |     |
+        # |------------------
         arr_grid = numpy.array(self.grid, dtype=object)
         a = arr_grid[0:3, 0:3]
         b = arr_grid[3:6, 0:3]
@@ -254,7 +270,8 @@ class SudokuTable(object):
         while solved == False:
             count += 1
             # Check for confirmed numbers.
-            self.process_rows_cols()
+            self.process_rows()
+            self.process_cols()
             self.process_segments()
             solved = True
             # Clear solved flag if any cell still contains multiple
@@ -267,7 +284,191 @@ class SudokuTable(object):
                 break
         return (solved, count)
 
-def main():
+class SudokuTableTests(unittest.TestCase):
+    """Unit tests."""
+
+    def test_initial_grid_populates_guesses(self):
+        st = SudokuTable(EASY)
+        expected = [
+            [5,3,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],7,[1,
+            2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4,
+            5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9]], [6,[1, 2, 3, 4, 5, 6,
+            7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 1,9,5, [1, 2, 3, 4, 5, 6, 7,
+            8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],9,8, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1,
+            2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4,
+            5, 6, 7, 8, 9],6, [1, 2, 3, 4, 5, 6, 7, 8, 9]], [8,[1, 2, 3, 4, 5,
+            6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8,
+            9],6,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1,
+            2, 3, 4, 5, 6, 7, 8, 9],3], [4,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2,
+            3, 4, 5, 6, 7, 8, 9], 8,[1, 2, 3, 4, 5, 6, 7, 8, 9],3, [1, 2, 3, 4,
+            5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 1], [7,[1, 2, 3, 4, 5,
+            6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8,
+            9],2,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1,
+            2, 3, 4, 5, 6, 7, 8, 9],6], [[1, 2, 3, 4, 5, 6, 7, 8, 9],6,[1, 2,
+            3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5,
+            6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 2,8, [1, 2, 3, 4, 5, 6, 7,
+            8, 9]], [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],
+            [1, 2, 3, 4, 5, 6, 7, 8, 9], 4,1,9, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1,
+            2, 3, 4, 5, 6, 7, 8, 9],5], [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3,
+            4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6,
+            7, 8, 9],8,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8,
+            9],7,9]] 
+        self.assertEqual(st.grid, expected)
+
+    def test_nums_in_group(self):
+        st = SudokuTable(EASY)
+        a = [1,2,3,4,5,6,7,8,9]
+        self.assertEqual(st.nums_in_group(a), a)
+        b = [1,2,3,4,5,6,7,[8,9],[8,9]]
+        self.assertEqual(st.nums_in_group(b),
+                         [1,2,3,4,5,6,7])
+        c = [[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[7,9]]
+        self.assertEqual(st.nums_in_group(c), [])
+
+    def test_lists_in_group(self):
+        st = SudokuTable(EASY)
+        a = [1,2,3,4,5,6,7,8,9]
+        self.assertEqual(st.lists_in_group(a), [])
+        b = [1,2,3,4,5,6,7,[8,9],[8,9]]
+        self.assertEqual(st.lists_in_group(b), [[8,9],[8,9]])
+        c = [[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[7,9]]
+        self.assertEqual(st.lists_in_group(c), c)
+
+    def test_remove_duplicates(self):
+        st = SudokuTable(EASY)
+        a = [1,2,3,4,5,6,7,8,9]
+        self.assertEqual(st.remove_duplicates(a), a)
+        b = [1,2,3,4,5,6,7,8,[8,9]]
+        self.assertEqual(st.remove_duplicates(b),
+                         [1,2,3,4,5,6,7,8,9])
+        c = [1,2,3,[3,4],5,6,7,8,[8,9]]
+        self.assertEqual(st.remove_duplicates(c),
+                         [1,2,3,4,5,6,7,8,9])
+        d = [1,2,3,[3,4,8],5,6,7,8,[8,9]]
+        self.assertEqual(st.remove_duplicates(d),
+                         [1,2,3,4,5,6,7,8,9])
+        e = [1,2,3,[3,4,8],[5,6],[5,6],7,8,[8,9]]
+        self.assertEqual(st.remove_duplicates(e),
+                         [1,2,3,4,[5,6],[5,6],7,8,9])
+
+    def test_find_hidden_unconfirmed(self):
+        st = SudokuTable(EASY)
+        a = [1,2,3,4,5,6,7,8,9]
+        self.assertEqual(st.find_hidden_confirmed(a), a)
+        b = [[1,2,3],[2,3],[2,3],4,5,6,7,8,9]
+        self.assertEqual(st.find_hidden_confirmed(b),
+                         [1,[2,3],[2,3],4,5,6,7,8,9])
+
+    def test_process_rows(self):
+        easy_input = [
+            [5,3,0, 0,7,0, 0,0,0],
+            [6,0,0, 1,9,5, 0,0,0],
+            [0,9,8, 0,0,0, 0,6,0],
+
+            [8,0,0, 0,6,0, 0,0,3],
+            [4,0,0, 8,0,3, 0,0,1],
+            [7,0,0, 0,2,0, 0,0,6],
+
+            [0,6,0, 0,0,0, 2,8,0],
+            [0,0,0, 4,1,9, 0,0,5],
+            [0,0,0, 0,8,0, 0,7,9]]
+        easy_1_step = [
+            [5,3,[1,2,4,6,8,9], [1,2,4,6,8,9],7,[1,2,4,6,8,9], [1,2,4,6,8,9],[1,2,4,6,8,9],[1,2,4,6,8,9]],
+            [6,[2,3,4,7,8],[2,3,4,7,8], 1,9,5, [2,3,4,7,8],[2,3,4,7,8],[2,3,4,7,8]],
+            [[1,2,3,4,5,7],9,8, [1,2,3,4,5,7],[1,2,3,4,5,7],[1,2,3,4,5,7], [1,2,3,4,5,7],6,[1,2,3,4,5,7]],
+
+            [8,[1,2,4,5,7,9],[1,2,4,5,7,9], [1,2,4,5,7,9],6,[1,2,4,5,7,9], [1,2,4,5,7,9],[1,2,4,5,7,9],3],
+            [4,[2,5,6,7,9],[2,5,6,7,9], 8,[2,5,6,7,9],3, [2,5,6,7,9],[2,5,6,7,9],1],
+            [7,[1,3,4,5,8,9],[1,3,4,5,8,9], [1,3,4,5,8,9],2,[1,3,4,5,8,9], [1,3,4,5,8,9],[1,3,4,5,8,9],6],
+
+            [[1,3,4,5,7,9],6,[1,3,4,5,7,9], [1,3,4,5,7,9],[1,3,4,5,7,9],[1,3,4,5,7,9], 2,8,[1,3,4,5,7,9]],
+            [[2,3,6,7,8],[2,3,6,7,8],[2,3,6,7,8], 4,1,9, [2,3,6,7,8],[2,3,6,7,8],5],
+            [[1,2,3,4,5,6],[1,2,3,4,5,6],[1,2,3,4,5,6], [1,2,3,4,5,6],8,[1,2,3,4,5,6], [1,2,3,4,5,6],7,9]]
+
+        st = SudokuTable(easy_input)
+        st.process_rows()
+        self.assertEqual(st.grid, easy_1_step)
+
+    def test_process_cols(self):
+        easy_input = [
+            [5,3,0, 0,7,0, 0,0,0],
+            [6,0,0, 1,9,5, 0,0,0],
+            [0,9,8, 0,0,0, 0,6,0],
+
+            [8,0,0, 0,6,0, 0,0,3],
+            [4,0,0, 8,0,3, 0,0,1],
+            [7,0,0, 0,2,0, 0,0,6],
+
+            [0,6,0, 0,0,0, 2,8,0],
+            [0,0,0, 4,1,9, 0,0,5],
+            [0,0,0, 0,8,0, 0,7,9]]
+        easy_1_step = [
+            [5,3,[1,2,3,4,5,6,7,9], [2,3,5,6,7,9],7,[1,2,4,6,7,8], [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],[2,4,7,8]],
+            [6,[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], 1,9,5, [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],[2,4,7,8]],
+            [[1,2,3,9],9,8, [2,3,5,6,7,9],[3,4,5],[1,2,4,6,7,8], [1,3,4,5,6,7,8,9],6,[2,4,7,8]],
+
+            [8,[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], [2,3,5,6,7,9],6,[1,2,4,6,7,8], [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],3],
+            [4,[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], 8,[3,4,5],3, [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],1],
+            [7,[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], [2,3,5,6,7,9],2,[1,2,4,6,7,8], [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],6],
+
+            [[1,2,3,9],6,[1,2,3,4,5,6,7,9], [2,3,5,6,7,9],[3,4,5],[1,2,4,6,7,8], 2,8,[2,4,7,8]],
+            [[1,2,3,9],[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], 4,1,9, [1,3,4,5,6,7,8,9],[1,2,3,4,5,9],5],
+            [[1,2,3,9],[1,2,4,5,7,8],[1,2,3,4,5,6,7,9], [2,3,5,6,7,9],8,[1,2,4,6,7,8], [1,3,4,5,6,7,8,9],7,9]]
+
+        st = SudokuTable(easy_input)
+        st.process_cols()
+        self.assertEqual(st.grid, easy_1_step)
+
+    def test_process_segments(self):
+        easy_input = [
+            [5,3,0, 0,7,0, 0,0,0],
+            [6,0,0, 1,9,5, 0,0,0],
+            [0,9,8, 0,0,0, 0,6,0],
+
+            [8,0,0, 0,6,0, 0,0,3],
+            [4,0,0, 8,0,3, 0,0,1],
+            [7,0,0, 0,2,0, 0,0,6],
+
+            [0,6,0, 0,0,0, 2,8,0],
+            [0,0,0, 4,1,9, 0,0,5],
+            [0,0,0, 0,8,0, 0,7,9]]
+        easy_1_step = [
+            [5,3,[1,2,4,7], [2,3,4,6,8],7,[2,3,4,6,8], [1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9]],
+            [6,[1,2,4,7],[1,2,4,7], 1,9,5, [1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9]],
+            [[1,2,4,7],9,8, [2,3,4,6,8],[2,3,4,6,8],[2,3,4,6,8], [1,2,3,4,5,7,8,9],6,[1,2,3,4,5,7,8,9]],
+
+            [8,[1,2,3,5,6,9],[1,2,3,5,6,9], [1,4,5,7,9],6,[1,4,5,7,9], [2,4,5,7,8,9],[2,4,5,7,8,9],3],
+            [4,[1,2,3,5,6,9],[1,2,3,5,6,9], 8,[1,4,5,7,9],3, [2,4,5,7,8,9],[2,4,5,7,8,9],1],
+            [7,[1,2,3,5,6,9],[1,2,3,5,6,9], [1,4,5,7,9],2,[1,4,5,7,9], [2,4,5,7,8,9],[2,4,5,7,8,9],6],
+
+            [[1,2,3,4,5,7,8,9],6,[1,2,3,4,5,7,8,9], [2,3,5,6,7],[2,3,5,6,7],[2,3,5,6,7], 2,8,[1,3,4,6]],
+            [[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9], 4,1,9, [1,3,4,6],[1,3,4,6],5],
+            [[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9],[1,2,3,4,5,7,8,9], [2,3,5,6,7],8,[2,3,5,6,7], [1,3,4,6],7,9]]
+
+        st = SudokuTable(easy_input)
+        st.process_segments()
+        self.assertEqual(st.grid, easy_1_step)
+
+    def test_solve(self):
+        easy_solution_manual = [
+            [5,3,4, 6,7,8, 9,1,2],
+            [6,7,2, 1,9,5, 3,4,8],
+            [1,9,8, 3,4,2, 5,6,7],
+
+            [8,5,9, 7,6,1, 4,2,3],
+            [4,2,6, 8,5,3, 7,9,1],
+            [7,1,3, 9,2,4, 8,5,6],
+
+            [9,6,1, 5,3,7, 2,8,4],
+            [2,8,7, 4,1,9, 6,3,5],
+            [3,4,5, 2,8,6, 1,7,9]]
+
+        easy_solution_computed = SudokuTable(EASY)
+        easy_solution_computed.solve()
+        self.assertEqual(easy_solution_computed.grid, easy_solution_manual)
+
+def solve_test_puzzles():
     """Solve a test Sudoku puzzle using the SudokuTable class and methods."""
     # pylint: disable=invalid-name
     st = SudokuTable(EASY)
@@ -287,6 +488,12 @@ def main():
         st.print_confirmed()
         print "With possibilities:"
         st.print_grid()
+
+def main():
+    """Run tests."""
+    solve_test_puzzles()
+    unittest.main()
+
 
 if __name__ == "__main__":
     main()
