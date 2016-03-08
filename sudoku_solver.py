@@ -19,6 +19,10 @@ Attributes:
 
 import numpy
 import unittest
+from collections import namedtuple
+Result = namedtuple("Result", ["solved", "iterations"])
+a = Result(True, 5)
+print a
 
 
 # pylint: disable=bad-whitespace
@@ -124,31 +128,32 @@ class SudokuTable(object):
             possible numbers for unconfirmed cells.
         """
         lst = []
-        for cell in group:
-            # Cell is a confirmed number.
-            if isinstance(cell, int):
-                lst.append(cell)
+        while lst != temp_lst:
+            for cell in group:
+                # Cell is a confirmed number.
+                if isinstance(cell, int):
+                    lst.append(cell)
 
-            # Cell is confirmed, but formatted as list.
-            elif len(cell) == 1:
-                lst.append(cell[0])
+                # Cell is confirmed, but formatted as list.
+                elif len(cell) == 1:
+                    lst.append(cell[0])
 
-            else:
-                # Compare current unconfirmed numbers for cell against
-                # confirmed numbers in the entire group.
-                nums = self.nums_in_group(group)
-                reduced_poss = [poss for poss in cell if not poss in nums]
-                if len(reduced_poss) == 1:
-                    lst.append(reduced_poss[0])
                 else:
-                    lst.append(reduced_poss)
-
+                    # Compare current unconfirmed numbers for cell against
+                    # confirmed numbers in the entire group.
+                    nums = self.nums_in_group(group)
+                    reduced_poss = [poss for poss in cell if not poss in nums]
+                    if len(reduced_poss) == 1:
+                        lst.append(reduced_poss[0])
+                    else:
+                        lst.append(reduced_poss)
+            temp_lst = lst
         #self.find_hidden_confirmed(lst)
 
         return lst
 
     def find_hidden_confirmed(self, group):
-        # Compare unconfirmed numbers against other unconfirmed 
+        # Compare unconfirmed numbers against other unconfirmed
         # numbers. If it only appears once, it must be confirmed.
         num_count = [0] * 10
         cell_pos = [0] * 10
@@ -383,7 +388,7 @@ class SudokuTableTests(unittest.TestCase):
             2, 3, 4, 5, 6, 7, 8, 9],5], [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3,
             4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6,
             7, 8, 9],8,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8,
-            9],7,9]] 
+            9],7,9]]
         self.assertEqual(st.grid, expected)
 
     def test_nums_in_group(self):
