@@ -143,7 +143,7 @@ class SudokuTable(object):
                 else:
                     lst.append(reduced_poss)
 
-        self.find_hidden_confirmed(lst)
+        #self.find_hidden_confirmed(lst)
 
         return lst
 
@@ -162,26 +162,83 @@ class SudokuTable(object):
             group[cell_pos[confirmed_num]] = confirmed_num
         return group
 
-    def process_rows(self):
-        """Iterate through Sudoku grid by rows, confirming known numbers."""
+    def hidden_by_row_col_seg(self):
+        # By row.
         new_grid = []
         # Go through grid row by row.
         for row in self.grid:
-            new_grid.append(self.remove_duplicates(row))
+            new_grid.append(self.find_hidden_confirmed(row))
         self.grid = new_grid
 
-    def process_cols(self):
+        # By column.
+        new_grid = []
+        trans_grid = self.transpose_grid(self.grid)
+        for col in trans_grid:
+            new_grid.append(self.find_hidden_confirmed(col))
+        self.grid = self.transpose_grid(new_grid)
+
+        # By segment.
+        arr_grid = numpy.array(self.grid, dtype=object)
+        a = arr_grid[0:3, 0:3]
+        b = arr_grid[3:6, 0:3]
+        c = arr_grid[6:9, 0:3]
+        d = arr_grid[0:3, 3:6]
+        e = arr_grid[3:6, 3:6]
+        f = arr_grid[6:9, 3:6]
+        g = arr_grid[0:3, 6:9]
+        h = arr_grid[3:6, 6:9]
+        i = arr_grid[6:9, 6:9]
+
+        segments = [a, b, c, d, e, f, g, h, i]
+        processed_segs = []
+
+        for seg in segments:
+            # Flatten each segment.
+            s = numpy.ravel(seg).tolist()
+            # Confirm numbers and reduce possibilities.
+            s = self.find_hidden_confirmed(s)
+            # Wrap up each segment and convert back to array.
+            s = numpy.array(s, dtype=object)
+            s = numpy.reshape(s, (3, 3))
+            processed_segs.append(s)
+
+        # Join up segments back into 9x9 grid.
+        new_arr_grid = arr_grid
+        new_arr_grid[0:3, 0:3] = processed_segs[0]
+        new_arr_grid[3:6, 0:3] = processed_segs[1]
+        new_arr_grid[6:9, 0:3] = processed_segs[2]
+        new_arr_grid[0:3, 3:6] = processed_segs[3]
+        new_arr_grid[3:6, 3:6] = processed_segs[4]
+        new_arr_grid[6:9, 3:6] = processed_segs[5]
+        new_arr_grid[0:3, 6:9] = processed_segs[6]
+        new_arr_grid[3:6, 6:9] = processed_segs[7]
+        new_arr_grid[6:9, 6:9] = processed_segs[8]
+        gd = new_arr_grid.tolist()
+        self.grid = gd
+
+    def process_rows(self, grid):
         """Iterate through Sudoku grid by rows, confirming known numbers."""
-        # Transpose grid so rows become columns and vice versa.
+        new_grid = []
+        # Go through grid row by row.
+        for row in grid:
+            new_grid.append(self.remove_duplicates(row))
+        return new_grid
+
+    def process_cols(self):
+        """Iterate through Sudoku grid by columns, confirming known numbers."""
+        # Transpose.
+        trans_grid = self.transpose_grid(self.grid)
+        # Confirm numbers.
+        new_grid = self.process_rows(trans_grid)
+        # Transpose back to original layout.
+        self.grid = self.transpose_grid(new_grid)
+
+    def transpose_grid(self, grid):
+        """Transpose grid so rows become columns and vice versa."""
         # pylint: disable=bad-builtin
         # pylint: disable=star-args
-        trans_grid = map(list, zip(*self.grid))
-
-        # Go through grid column by column.
-        new_grid = []
-        for col in trans_grid:
-            new_grid.append(self.remove_duplicates(col))
-        self.grid = map(list, zip(*new_grid))
+        trans_grid = map(list, zip(*grid))
+        return trans_grid
 
     def process_segments(self):
         """Split 9x9 grid into 9 segments, then check for confirmed numbers
@@ -193,15 +250,15 @@ class SudokuTable(object):
         # pylint: disable=no-member
         # -------------------
         # |     |     |     |
-        # |  a  |  b  |  c  |
+        # |  a  |  d  |  g  |
         # |     |     |     |
         # |------------------
         # |     |     |     |
-        # |  d  |  e  |  f  |
+        # |  b  |  e  |  h  |
         # |     |     |     |
         # |------------------
         # |     |     |     |
-        # |  g  |  h  |  i  |
+        # |  c  |  f  |  i  |
         # |     |     |     |
         # |------------------
         arr_grid = numpy.array(self.grid, dtype=object)
@@ -217,15 +274,17 @@ class SudokuTable(object):
 
         segments = [a, b, c, d, e, f, g, h, i]
         processed_segs = []
+
         for seg in segments:
-        # Flatten each segment.
+            # Flatten each segment.
             s = numpy.ravel(seg).tolist()
-        # Confirm numbers and reduce possibilities.
+            # Confirm numbers and reduce possibilities.
             s = self.remove_duplicates(s)
-        # Wrap up each segment and convert back to array.
+            # Wrap up each segment and convert back to array.
             s = numpy.array(s, dtype=object)
             s = numpy.reshape(s, (3, 3))
             processed_segs.append(s)
+
         # Join up segments back into 9x9 grid.
         new_arr_grid = arr_grid
         new_arr_grid[0:3, 0:3] = processed_segs[0]
@@ -267,13 +326,24 @@ class SudokuTable(object):
         """
         solved = False
         count = 0
+        prev_grid = []
         while solved == False:
+            #import pdb; pdb.set_trace()
             count += 1
             # Check for confirmed numbers.
-            self.process_rows()
+            self.grid = self.process_rows(self.grid)
             self.process_cols()
+            #import pdb; pdb.set_trace()
             self.process_segments()
             solved = True
+
+            # Program can't progress with current algorithms - same results as
+            # last iteration.
+            if self.grid == prev_grid:
+                self.hidden_by_row_col_seg()
+
+            prev_grid = self.grid
+
             # Clear solved flag if any cell still contains multiple
             # possibilities.
             for row in self.grid:
@@ -387,8 +457,8 @@ class SudokuTableTests(unittest.TestCase):
             [[1,2,3,4,5,6],[1,2,3,4,5,6],[1,2,3,4,5,6], [1,2,3,4,5,6],8,[1,2,3,4,5,6], [1,2,3,4,5,6],7,9]]
 
         st = SudokuTable(easy_input)
-        st.process_rows()
-        self.assertEqual(st.grid, easy_1_step)
+        grid_rowed = st.process_rows(st.grid)
+        self.assertEqual(grid_rowed, easy_1_step)
 
     def test_process_cols(self):
         easy_input = [
@@ -420,6 +490,64 @@ class SudokuTableTests(unittest.TestCase):
         st.process_cols()
         self.assertEqual(st.grid, easy_1_step)
 
+    def test_transpose_grid(self):
+        # Check basic list transpose.
+        easy_input = [
+            [5,3,0, 0,7,0, 0,0,0],
+            [6,0,0, 1,9,5, 0,0,0],
+            [0,9,8, 0,0,0, 0,6,0],
+
+            [8,0,0, 0,6,0, 0,0,3],
+            [4,0,0, 8,0,3, 0,0,1],
+            [7,0,0, 0,2,0, 0,0,6],
+
+            [0,6,0, 0,0,0, 2,8,0],
+            [0,0,0, 4,1,9, 0,0,5],
+            [0,0,0, 0,8,0, 0,7,9]]
+        transposed_man = [
+            [5,6,0, 8,4,7, 0,0,0],
+            [3,0,9, 0,0,0, 6,0,0],
+            [0,0,8, 0,0,0, 0,0,0],
+
+            [0,1,0, 0,8,0, 0,4,0],
+            [7,9,0, 6,0,2, 0,1,8],
+            [0,5,0, 0,3,0, 0,9,0],
+
+            [0,0,0, 0,0,0, 2,0,0],
+            [0,0,6, 0,0,0, 8,0,7],
+            [0,0,0, 3,1,6, 0,5,9]]
+        st = SudokuTable(easy_input)
+        transposed_auto = st.transpose_grid(easy_input)
+        self.assertEqual(transposed_auto, transposed_man)
+
+        # Check transpose with nested lists.
+        easy_input_guesses = [
+            [5,3,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],7,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [6,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 1,9,5, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],9,8, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],6,[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+
+            [8,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],6,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],3],
+            [4,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 8,[1, 2, 3, 4, 5, 6, 7, 8, 9],3, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],1],
+            [7,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],2,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],6],
+
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],6,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 2,8,[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 4,1,9, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],5],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],8,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],7,9]]
+        transposed_man_guesses = [
+            [5,6,[1, 2, 3, 4, 5, 6, 7, 8, 9], 8,4,7, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [3,[1, 2, 3, 4, 5, 6, 7, 8, 9],9, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 6,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],8, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],1,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],8,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],4,[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [7,9,[1, 2, 3, 4, 5, 6, 7, 8, 9], 6,[1, 2, 3, 4, 5, 6, 7, 8, 9],2, [1, 2, 3, 4, 5, 6, 7, 8, 9],1,8],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],5,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],3,[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],9,[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 2,[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],6, [1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 8,[1, 2, 3, 4, 5, 6, 7, 8, 9],7],
+            [[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9],[1, 2, 3, 4, 5, 6, 7, 8, 9], 3,1,6, [1, 2, 3, 4, 5, 6, 7, 8, 9],5,9]]
+        transposed_auto_guesses = st.transpose_grid(easy_input_guesses)
+        self.assertEqual(transposed_auto_guesses, transposed_man_guesses)
+
     def test_process_segments(self):
         easy_input = [
             [5,3,0, 0,7,0, 0,0,0],
@@ -450,7 +578,79 @@ class SudokuTableTests(unittest.TestCase):
         st.process_segments()
         self.assertEqual(st.grid, easy_1_step)
 
-    def test_solve(self):
+    # def test_process_rows_cols(self):
+    #     easy_input_rowed = [
+    #         [5,3,[1,2,4,6,8,9], [1,2,4,6,8,9],7,[1,2,4,6,8,9], [1,2,4,6,8,9],[1,2,4,6,8,9],[1,2,4,6,8,9]],
+    #         [6,[2,3,4,7,8],[2,3,4,7,8], 1,9,5, [2,3,4,7,8],[2,3,4,7,8],[2,3,4,7,8]],
+    #         [[1,2,3,4,5,7],9,8, [1,2,3,4,5,7],[1,2,3,4,5,7],[1,2,3,4,5,7], [1,2,3,4,5,7],6,[1,2,3,4,5,7]],
+
+    #         [8,[1,2,4,5,7,9],[1,2,4,5,7,9], [1,2,4,5,7,9],6,[1,2,4,5,7,9], [1,2,4,5,7,9],[1,2,4,5,7,9],3],
+    #         [4,[2,5,6,7,9],[2,5,6,7,9], 8,[2,5,6,7,9],3, [2,5,6,7,9],[2,5,6,7,9],1],
+    #         [7,[1,3,4,5,8,9],[1,3,4,5,8,9], [1,3,4,5,8,9],2,[1,3,4,5,8,9], [1,3,4,5,8,9],[1,3,4,5,8,9],6],
+
+    #         [[1,3,4,5,7,9],6,[1,3,4,5,7,9], [1,3,4,5,7,9],[1,3,4,5,7,9],[1,3,4,5,7,9], 2,8,[1,3,4,5,7,9]],
+    #         [[2,3,6,7,8],[2,3,6,7,8],[2,3,6,7,8], 4,1,9, [2,3,6,7,8],[2,3,6,7,8],5],
+    #         [[1,2,3,4,5,6],[1,2,3,4,5,6],[1,2,3,4,5,6], [1,2,3,4,5,6],8,[1,2,3,4,5,6], [1,2,3,4,5,6],7,9]]
+    #     easy_1_step = [
+    #         [5,3,[1,2,4,6,9], [2,6,9],7,[1,2,4,6,8], [1,4,6,8,9],[1,2,4,9],[2,4,8]],
+    #         [6,[2,4,7,8],[2,3,4,7], 1,9,5, [3,4,7,8],[2,3,4],[2,4,7,8]],
+    #         [[1,2,3],9,8, [2,3,5,7],[3,4,5],[1,2,4,7], [1,3,4,5,7],6,[2,4,7]],
+
+    #         [8,[1,2,4,5,7],[1,2,4,5,7,9], [2,5,7,9],6,[1,2,4,7], [1,4,5,7,9],[1,2,4,5,9],3],
+    #         [4,[2,5,7],[2,5,6,7,9], 8,5,3, [5,6,7,9],[2,5,9],1],
+    #         [7,[1,4,5,8],[1,3,4,5,9], [3,5,9],2,[1,4,8], [1,3,4,5,8,9],[1,3,4,5,9],6],
+
+    #         [9,6,[1,3,4,5,7,9], [3,5,7,9],[3,4,5],[1,4,7], 2,8,[4,7]],
+    #         [[2,3],[2,7,8],[2,3,6,7], 4,1,9, [3,6,7,8],[2,3],5],
+    #         [[1,2,3],[1,2,4,5],[1,2,3,4,5,6], [2,3,5,6],8,[1,2,4,6], [1,3,4,5,6],7,9]]
+
+    #     st = SudokuTable(easy_input_rowed)
+    #     st.process_cols()
+    #     self.assertEqual(st.grid, easy_1_step)
+
+    # def test_process_rows_cols_segs(self):
+    #     easy_input = [
+    #         [5,3,0, 0,7,0, 0,0,0],
+    #         [6,0,0, 1,9,5, 0,0,0],
+    #         [0,9,8, 0,0,0, 0,6,0],
+
+    #         [8,0,0, 0,6,0, 0,0,3],
+    #         [4,0,0, 8,0,3, 0,0,1],
+    #         [7,0,0, 0,2,0, 0,0,6],
+
+    #         [0,6,0, 0,0,0, 2,8,0],
+    #         [0,0,0, 4,1,9, 0,0,5],
+    #         [0,0,0, 0,8,0, 0,7,9]]
+    #     easy_rowed_coled = [
+    #         [5,3,[1,2,4,6,9], [2,6,9],7,[1,2,4,6,8], [1,4,6,8,9],[1,2,4,9],[2,4,8]],
+    #         [6,[2,4,7,8],[2,3,4,7], 1,9,5, [3,4,7,8],[2,3,4],[2,4,7,8]],
+    #         [[1,2,3],9,8, [2,3,5,7],[3,4,5],[1,2,4,7], [1,3,4,5,7],6,[2,4,7]],
+
+    #         [8,[1,2,4,5,7],[1,2,4,5,7,9], [2,5,7,9],6,[1,2,4,7], [1,4,5,7,9],[1,2,4,5,9],3],
+    #         [4,[2,5,7],[2,5,6,7,9], 8,5,3, [5,6,7,9],[2,5,9],1],
+    #         [7,[1,4,5,8],[1,3,4,5,9], [3,5,9],2,[1,4,8], [1,3,4,5,8,9],[1,3,4,5,9],6],
+
+    #         [9,6,[1,3,4,5,7,9], [3,5,7,9],[3,4,5],[1,4,7], 2,8,[4,7]],
+    #         [[2,3],[2,7,8],[2,3,6,7], 4,1,9, [3,6,7,8],[2,3],5],
+    #         [[1,2,3],[1,2,4,5],[1,2,3,4,5,6], [2,3,5,6],8,[1,2,4,6], [1,3,4,5,6],7,9]]
+    #     easy_1_step = [
+    #         [5,3,[1,2,4], [2,6],7,8, [1,4,8,9],[1,2,4,9],[2,4,8]],
+    #         [6,[2,4,7],[2,4,7], 1,9,5, [3,4,7,8],[2,3,4],[2,4,7,8]],
+    #         [[1,2],9,8, [2,3],[3,4],[2,4], 5,6,[2,4,7]],
+
+    #         [8,[1,2,5],[1,2,5,9], [7,9],6,[1,4,7], [4,5,7,9],[2,4,5,9],3],
+    #         [4,[2,5],[2,5,6,9], 8,5,3, [5,7,9],[2,5,9],1],
+    #         [7,[1,5],[1,3,5,9], 9,2,[1,4], [4,5,8,9],[4,5,9],6],
+
+    #         [9,6,[1,3,4,5,7,9], [3,5,7],[3,5],7, 2,8,4],
+    #         [[2,3],[2,7,8],[2,3,7], 4,1,9, [3,6],3,5],
+    #         [[1,2,3],[1,2,4,5],[1,2,3,4,5], [2,3,5,6],8,[2,6], [1,3,4,6],7,9]]
+
+    #     st = SudokuTable(easy_rowed_coled)
+    #     st.process_segments()
+    #     self.assertEqual(st.grid, easy_1_step)
+
+    def test_solve_easy(self):
         easy_solution_manual = [
             [5,3,4, 6,7,8, 9,1,2],
             [6,7,2, 1,9,5, 3,4,8],
@@ -468,12 +668,67 @@ class SudokuTableTests(unittest.TestCase):
         easy_solution_computed.solve()
         self.assertEqual(easy_solution_computed.grid, easy_solution_manual)
 
+    def test_solve_medium(self):
+        med_solution_manual = [
+            [6,2,9, 1,7,8, 4,3,5],
+            [8,4,5, 3,6,2, 7,9,1],
+            [1,3,7, 5,9,4, 8,2,6],
+
+            [2,7,8, 6,4,3, 5,1,9],
+            [3,9,1, 2,8,5, 6,7,4],
+            [4,5,6, 7,1,9, 2,8,3],
+
+            [9,6,3, 8,5,7, 1,4,2],
+            [5,8,4, 9,2,1, 3,6,7],
+            [7,1,2, 4,3,6, 9,5,8]]
+
+        med_solution_computed = SudokuTable(MEDIUM)
+        med_solution_computed.solve()
+        self.assertEqual(med_solution_computed.grid, med_solution_manual)
+
+    def test_solve_medium2(self):
+        easy_solution_manual = [
+            [5,3,4, 6,7,8, 9,1,2],
+            [6,7,2, 1,9,5, 3,4,8],
+            [1,9,8, 3,4,2, 5,6,7],
+
+            [8,5,9, 7,6,1, 4,2,3],
+            [4,2,6, 8,5,3, 7,9,1],
+            [7,1,3, 9,2,4, 8,5,6],
+
+            [9,6,1, 5,3,7, 2,8,4],
+            [2,8,7, 4,1,9, 6,3,5],
+            [3,4,5, 2,8,6, 1,7,9]]
+
+        #easy_solution_computed = SudokuTable(MEDIUM2)
+        #easy_solution_computed.solve()
+        #self.assertEqual(easy_solution_computed.grid, easy_solution_manual)
+
+    def test_solve_hard(self):
+        easy_solution_manual = [
+            [5,3,4, 6,7,8, 9,1,2],
+            [6,7,2, 1,9,5, 3,4,8],
+            [1,9,8, 3,4,2, 5,6,7],
+
+            [8,5,9, 7,6,1, 4,2,3],
+            [4,2,6, 8,5,3, 7,9,1],
+            [7,1,3, 9,2,4, 8,5,6],
+
+            [9,6,1, 5,3,7, 2,8,4],
+            [2,8,7, 4,1,9, 6,3,5],
+            [3,4,5, 2,8,6, 1,7,9]]
+
+        #easy_solution_computed = SudokuTable(EASY)
+        #easy_solution_computed.solve()
+        #self.assertEqual(easy_solution_computed.grid, easy_solution_manual)
+
 def solve_test_puzzles():
     """Solve a test Sudoku puzzle using the SudokuTable class and methods."""
     # pylint: disable=invalid-name
-    st = SudokuTable(EASY)
+    grid_to_solve = MEDIUM
+    st = SudokuTable(grid_to_solve)
     print "Starting grid:"
-    for row in EASY:
+    for row in grid_to_solve:
         print row
     it = st.solve()
     # The grid was solved.
